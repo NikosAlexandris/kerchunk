@@ -55,13 +55,7 @@ def parquet_reference(
     input_file: Path,
     output_parquet_store: Path,
     record_size: int = 1000,
-    # source_directory: Path,
-    # reference_directory: Path,
-    # source_pattern: str = '*.nc',
-    # reference_pattern: str = '*.json',
-    # workers: int = 4,
     dry_run: bool = False,
-    # combined_reference: Path = "combined_kerchunk.parq",
 ):
     """Create Parquet references from an HDF5/NetCDF file"""
     parquet_store = create_parquet_references(
