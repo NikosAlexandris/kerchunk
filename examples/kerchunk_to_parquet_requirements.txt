@@ -1,0 +1,6 @@
+typer
+rich
+xarray
+git+https://github.com/fsspec/kerchunk.git@b9659c32449539ef6addcb7a12520715cecf3253#egg=kerchunk
+h5py
+fastparquet
