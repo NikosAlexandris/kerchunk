@@ -18,18 +18,43 @@ app = typer.Typer(
 )
 
 
-def create_parquet_references(
+def create_parquet_store(
     input_file: Path,
     output_parquet_store: Path,
-    record_size: int = 1000,
-    dry_run: bool = False,
+    record_size: int = DEFAULT_RECORD_SIZE,
 ):
     """ """
+    logger.info('Logging execution of create_parquet_store()')
     output_parquet_store.mkdir(parents=True, exist_ok=True)
-    filesystem = fsspec.filesystem("file")
-    output = LazyReferenceMapper.create(
-        root=str(output_parquet_store),  # does not handle Path
-        fs=filesystem,
+
+    try:
+        logger.info(f'Creating a filesystem mapper for {output_parquet_store}')
+        filesystem = fsspec.filesystem("file")
+        output = LazyReferenceMapper.create(
+            root=str(output_parquet_store),  # does not handle Path
+            fs=filesystem,
+            record_size=record_size,
+        )
+        logger.info(f'Created the filesystem mapper {output}')
+
+        logger.info(f'Kerchunking the file {input_file}')
+        single_zarr = SingleHdf5ToZarr(str(input_file), out=output)
+        single_zarr.translate()
+        logger.info(f'Kerchunked the file {input_file}')
+
+    except Exception as e:
+        print(f"Failed processing file [code]{input_file}[/code] : {e}")
+        logger.error(f"Exception occurred: {e}")
+        logger.error("Traceback (most recent call last):")
+        
+        tb_lines = traceback.format_exc().splitlines()
+        for line in tb_lines:
+            logger.error(line)
+
+        raise
+
+    logger.info(f'Returning a Parquet store : {output_parquet_store}')
+    return output_parquet_store
         record_size=record_size,
     )
     if dry_run:
