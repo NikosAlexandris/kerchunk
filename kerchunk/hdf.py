@@ -436,10 +436,13 @@ class SingleHdf5ToZarr:
                     **kwargs,
                 )
                 lggr.debug(f"Created Zarr array: {za}")
-                self._transfer_attrs(h5obj, za)
+
                 adims = self._get_array_dims(h5obj)
                 za.attrs["_ARRAY_DIMENSIONS"] = adims
                 lggr.debug(f"_ARRAY_DIMENSIONS = {adims}")
+
+                self._transfer_attrs(h5obj, za)
+                lggr.debug(f"Transferred attributes from {h5obj} to {za}")
 
                 if "data" in kwargs:
                     return  # embedded bytes, no chunks to copy
