@@ -69,6 +69,41 @@ def create_parquet_store(
     output.flush()
 
     return output_parquet_store
+def combine_multiple_parquet_stores(
+    source_directory: Path,
+    output_parquet_store: Path,
+    pattern: str = '*.parquet',
+    record_size: int = DEFAULT_RECORD_SIZE,
+):
+    # output_parquet_store = Path(output_parquet_store)
+    output_parquet_store = output_parquet_store.parent / (output_parquet_store.name + '.parquet')
+    output_parquet_store.mkdir(parents=True, exist_ok=True)
+    filesystem = fsspec.filesystem("file")
+    try:
+        output = LazyReferenceMapper.create(
+            root=str(output_parquet_store),
+            fs=filesystem,
+            record_size=record_size,
+        )
+        input_references = list(source_directory.glob(pattern))
+        input_references = list(map(str, input_references))
+        input_references.sort()
+        multi_zarr = MultiZarrToZarr(
+            input_references,
+            remote_protocol="file",
+            concat_dims=["time"],
+            identical_dims= ["lat", "lon"],
+            coo_map={"time": "cf:time"},
+            out=output,
+        )
+        multi_zarr.translate()
+        output.flush()
+
+    except Exception as e:
+        print(f"Failed creating the [code]{output_parquet_store}[/code] : {e}!")
+        import traceback
+        traceback.print_exc()
+        # return
 
 
 @app.command(
