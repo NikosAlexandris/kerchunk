@@ -1,9 +1,9 @@
 from pathlib import Path
-
+from functools import partial
 import typer
+from typing import Optional
 import xarray as xr
 from rich import print
-
 import fsspec
 from fsspec.implementations.reference import LazyReferenceMapper
 from kerchunk.hdf import SingleHdf5ToZarr
@@ -13,6 +13,9 @@ import json
 from loguru import logger
 logger.remove()
 logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
+from devtools import debug
+import traceback
+
 # Log environment variables
 logger.info("Environment Variables:")
 import os
@@ -34,6 +37,7 @@ for dist in pkg_resources.working_set:
 logger.info(f"Current Working Directory: {os.getcwd()}")
 
 
+DEFAULT_RECORD_SIZE = 10000
 
 
 app = typer.Typer(
@@ -82,6 +86,7 @@ def create_parquet_store(
 
     logger.info(f'Returning a Parquet store : {output_parquet_store}')
     return output_parquet_store
+
 
 def create_single_parquet_store(
     input_file_path,
@@ -275,7 +280,6 @@ def select(
         str(parquet_store),  # does not handle Path
         engine="kerchunk",
         storage_options=dict(skip_instance_cache=True, remote_protocol="file"),
-        # backend_kwargs={"consolidated": False},
     )
     print(dataset)
 
