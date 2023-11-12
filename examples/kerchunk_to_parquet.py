@@ -138,18 +138,28 @@ def combine_multiple_parquet_stores(
     no_args_is_help=True,
     help=f"Create Parquet references to an HDF5/NetCDF file",
 )
-def parquet_reference(
+def reference(
     input_file: Path,
-    output_parquet_store: Path,
-    record_size: int = 1000,
+    output_directory: Optional[Path] = '.',
+    record_size: int = DEFAULT_RECORD_SIZE,
     dry_run: bool = False,
 ):
     """Create Parquet references from an HDF5/NetCDF file"""
-    parquet_store = create_parquet_references(
+    filename = input_file.stem
+    output_parquet_store = output_directory / f'{filename}.parquet'
+
+    if dry_run:
+        print(f"[bold]Dry running operations that would be performed[/bold]:")
+        print(
+            f"> Creating Parquet references to [code]{input_file}[/code] in [code]{output_parquet_store}[/code]"
+        )
+        return  # Exit for a dry run
+
+    create_parquet_store(
         input_file=input_file,
         output_parquet_store=output_parquet_store,
         record_size=record_size,
-        dry_run=dry_run,
+    )
 @app.command(
     'combine-stores',
     no_args_is_help=True,
