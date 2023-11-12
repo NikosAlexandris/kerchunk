@@ -150,6 +150,22 @@ def parquet_reference(
         output_parquet_store=output_parquet_store,
         record_size=record_size,
         dry_run=dry_run,
+@app.command(
+    'combine-stores',
+    no_args_is_help=True,
+    help=f"Combine multiple Parquet stores",
+)
+def combine_parquet_stores(
+        source_directory: Path,
+        output_parquet_store: Path,
+        pattern: str = '*.parquet',
+        record_size: Optional[int] = DEFAULT_RECORD_SIZE,
+):
+    combine_multiple_parquet_stores(
+        source_directory=source_directory,
+        pattern=pattern,
+        output_parquet_store=output_parquet_store,
+        record_size=record_size,
     )
 
 
