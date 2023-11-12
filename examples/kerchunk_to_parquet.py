@@ -82,14 +82,30 @@ def create_parquet_store(
 
     logger.info(f'Returning a Parquet store : {output_parquet_store}')
     return output_parquet_store
+
+def create_single_parquet_store(
+    input_file_path,
+    output_directory,
+    record_size: int = DEFAULT_RECORD_SIZE,
+    verbose: int = 0,
+):
+    """Helper function"""
+    filename = input_file_path.stem
+    single_parquet_store = output_directory / f"{filename}.parquet"
+    create_parquet_store(
+        input_file_path,
+        output_parquet_store=single_parquet_store,
         record_size=record_size,
     )
-    if dry_run:
-        print(
-            f"[bold]Dry run[/bold] of [bold]operations that would be performed[/bold]:"
+    if verbose:
+        dataset = xr.open_dataset(
+            str(single_parquet_store),
+            engine='kerchunk',
+            storage_options=dict(remote_protocol='file')
         )
-        print(
-            f"> Creating [bold]parquet[/bold] references to [code]{input_file}[/code] in [code]{output_parquet_store}[/code]"
+        print(dataset)
+
+
 def create_multiple_parquet_stores(
     source_directory: Path,
     output_directory: Path,
