@@ -90,12 +90,36 @@ def create_parquet_store(
         )
         print(
             f"> Creating [bold]parquet[/bold] references to [code]{input_file}[/code] in [code]{output_parquet_store}[/code]"
+def create_multiple_parquet_stores(
+    source_directory: Path,
+    output_directory: Path,
+    pattern: str = "*.nc",
+    record_size: int = DEFAULT_RECORD_SIZE,
+    workers: int = 4,
+    verbose: int = 0,
+):
+    """ """
+    input_file_paths = list(source_directory.glob(pattern))
+    if verbose:
+        print(f'Input file paths : {input_file_paths}')
+    if not input_file_paths:
+        print("No files found in [code]{source_directory}[/code] matching the pattern [code]{pattern}[/code]!"
         )
-        return  # Exit for a dry run
-    SingleHdf5ToZarr(input_file, out=output).translate()
-    output.flush()
+        return
+    output_directory.mkdir(parents=True, exist_ok=True)
+    with multiprocessing.Pool(processes=workers) as pool:
+        print(f'Creating Parquet stores in [code]{output_directory}[/code]')
+        partial_create_parquet_references = partial(
+            create_single_parquet_store,
+            output_directory=output_directory,
+            record_size=record_size,
+            verbose=verbose,
+        )
+        pool.map(partial_create_parquet_references, input_file_paths)
+    if verbose:
+        print(f'Done!')
 
-    return output_parquet_store
+
 def combine_multiple_parquet_stores(
     source_directory: Path,
     output_parquet_store: Path,
