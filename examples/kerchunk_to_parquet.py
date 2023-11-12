@@ -7,6 +7,33 @@ from rich import print
 import fsspec
 from fsspec.implementations.reference import LazyReferenceMapper
 from kerchunk.hdf import SingleHdf5ToZarr
+from kerchunk.combine import MultiZarrToZarr
+import multiprocessing
+import json
+from loguru import logger
+logger.remove()
+logger.add("debug.log", format="{time} {level} {message}", level="DEBUG")
+# Log environment variables
+logger.info("Environment Variables:")
+import os
+safe_keys = ['PATH', 'USER', 'SHELL']
+for key in safe_keys:
+    logger.info(f"{key}: {os.environ.get(key)}")
+
+# Log Python version
+import sys
+logger.info(f"Python Version: {sys.version}")
+
+# Log installed packages and versions
+import pkg_resources
+logger.info("Installed Packages and Versions:")
+for dist in pkg_resources.working_set:
+    logger.info(f"{dist.project_name}=={dist.version}")
+
+# Log current working directory
+logger.info(f"Current Working Directory: {os.getcwd()}")
+
+
 
 
 app = typer.Typer(
