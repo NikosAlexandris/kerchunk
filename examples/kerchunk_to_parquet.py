@@ -160,6 +160,50 @@ def reference(
         output_parquet_store=output_parquet_store,
         record_size=record_size,
     )
+
+
+@app.command(
+    "reference-multi",
+    no_args_is_help=True,
+    help=f"Create Parquet references to multiple HDF5/NetCDF files",
+)
+def reference_multi(
+    source_directory: Path,
+    output_directory: Optional[Path] = '.',
+    pattern: str = "*.nc",
+    record_size: int = DEFAULT_RECORD_SIZE,
+    workers: int = 4,
+    dry_run: bool = False,
+    verbose: int = 0,
+):
+    """Create Parquet references from an HDF5/NetCDF file"""
+    input_file_paths = list(source_directory.glob(pattern))
+
+    if not input_file_paths:
+        print("No files found in the source directory matching the pattern.")
+        return
+
+    if dry_run:
+        print(
+            f"[bold]Dry running operations that would be performed[/bold]:"
+        )
+        print(
+            f"> Reading files in [code]{source_directory}[/code] matching the pattern [code]{pattern}[/code]"
+        )
+        print(f"> Number of files matched : {len(input_file_paths)}")
+        print(f"> Creating Parquet stores in [code]{output_directory}[/code]")
+        return  # Exit for a dry run
+
+    create_multiple_parquet_stores(
+        source_directory=source_directory,
+        output_directory=output_directory,
+        pattern=pattern,
+        record_size=record_size,
+        workers=workers,
+        verbose=verbose,
+    )
+
+
 @app.command(
     'combine-stores',
     no_args_is_help=True,
