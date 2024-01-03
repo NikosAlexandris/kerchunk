@@ -1,5 +1,6 @@
 .envrc
 .kerchunk_virtual_environment/
+*.nc
 
 # Created by .ignore support plugin (hsz.mobi)
 ### Python template
