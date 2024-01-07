@@ -34,6 +34,120 @@ _HIDDEN_ATTRS = {  # from h5netcdf.attrs
 }
 
 
+from rich import print
+
+def print_create_array_equivalent_to(h5objname):
+    create_array_message = '> [bold reverse]Create Zarr Array[/bold reverse]\n'
+    create_array_message += "   Equivalent to the HDF5 dataset : "
+    create_array_message += f'[code]{h5objname}[/code]'
+    # create_array_message += '\n' + '-' * len(create_array_message)
+    print(create_array_message)
+
+
+def print_created_array(zarr_array):
+    created_array_message = ' + Created Zarr Array : '
+    created_array_message += f'{zarr_array}'
+    created_array_message += '\n'
+    print(created_array_message)
+
+
+def print_get_array_dimensions(h5obj, dimensions):
+    get_array_dims_message = "> [bold]Get Array Dimensions[/bold]\n"
+    get_array_dims_message += "   (adims) : "
+    get_array_dims_message += f"{dimensions}\n"
+    get_array_dims_message += f"   from : {h5obj}"
+    # get_array_dims_message += "\n" + "-" * len(get_array_dims_message)
+    get_array_dims_message += '\n'
+    print(get_array_dims_message)
+
+
+def print_add_array_dimensions_to(zarr_array):
+    add_array_dims_to_message = "> [bold]Add Array Dimensions[/bold]\n"
+    add_array_dims_to_message += f"   Add [code]_ARRAY_DIMENSIONS[/code] "
+    add_array_dims_to_message += f"to '{zarr_array}'\n"
+    add_array_dims_to_message += f"   with existing attributes : {zarr_array.attrs}"
+    # add_array_dims_to_message += "\n" + "-" * len(add_array_dims_message)
+    add_array_dims_to_message += '\n'
+    print(add_array_dims_to_message)
+
+# def print_array_dimensions(dimensions):
+#     print("[bold]Array Dimensions[/bold]",
+#           "\n>>> ---------------------------------------",
+#     )
+#     print(f"Key : ' _ARRAY_DIMENSIONS'")
+#     print(f"Value : Array dimensions (adims): {dimensions}")
+#     hidden_keys = [key for key in zarr_array.attrs.keys() if key.startswith("_")]
+#     print(f"Hidden keys in za.attrs: {hidden_keys}")
+#     print("------------------------------------- <<<\n")
+
+
+def print_updated_array(zarr_array):
+    updated_array_message = "> [bold]Updated Array[/bold]"
+    updated_array_message += f"{zarr_array.attrs}\n"
+    updated_array_message += "   [bold]Key[/bold] : [bold]Value[/bold]\n   "
+    updated_array_message += str([f"{key}: {value}" for key, value in zarr_array.attrs.items()])
+    updated_array_message += '\n'
+    # print("------------------------------------ <<<\n")
+    print(updated_array_message)
+
+def print_transfer_attributes_from_to(h5obj, zarr_array):
+    transfer_attibutes_message = '> [bold]Transfer array attributes[/bold]\n'
+    transfer_attibutes_message += f"   from HDF5 object : '{h5obj}'\n"
+    transfer_attibutes_message += f"   to Zarr object : '{zarr_array}'"
+    transfer_attibutes_message += '\n   ' + '-' * 19 + '-' * len(str(zarr_array))
+    print(transfer_attibutes_message)
+
+
+def print_source_attrs(zarr_array):
+    source_array_attributes_message = "   [bold]Source[/bold] Attributes"
+    source_array_attributes_message += '\n'
+    if zarr_array.attrs.items():
+        # source_array_attributes_message += "     [bold]Key[/bold] : [bold]Value[/bold]\n"
+        key_values = '\n'.join([f"     {key}: {value}" for key, value in zarr_array.attrs.items()])
+        source_array_attributes_message += key_values
+        source_array_attributes_message += '\n'
+    else:
+        print(f"[red bold reverse]Initial array attributes are empty ![/red bold reverse]")
+        return
+    print(source_array_attributes_message)
+
+
+def print_initial_attrs(zarr_array):
+    initial_array_attributes_message = "   [bold]Initial[/bold] Attributes"
+    initial_array_attributes_message += '\n'
+    if zarr_array.attrs.items():
+        # initial_array_attributes_message += "     [bold]Key[/bold] : [bold]Value[/bold]\n"
+        key_values = '\n'.join([f"     {key}: {value}" for key, value in zarr_array.attrs.items()])
+        initial_array_attributes_message += key_values
+        # initial_array_attributes_message += '\n'
+    else:
+        empty_array_attributes_message = "   [red bold]Initial attributes in[/red bold] "
+        empty_array_attributes_message += f"{zarr_array} "
+        empty_array_attributes_message += "[red bold underline]are empty![/red bold underline]\n"
+        print(empty_array_attributes_message)
+        return
+    print(initial_array_attributes_message)
+
+
+def print_updated_attrs(zarr_array):
+    updated_array_attributes_message = "   [bold]Updated[/bold] Attributes after _transfer_attrs()\n"
+    updated_array_attributes_message += f"   attributes : {zarr_array.attrs}"
+    updated_array_attributes_message += '\n'
+    # updated_array_attributes_message += "     [bold]Key[/bold] : [bold]Value[/bold]\n"
+    key_values = '\n'.join([f"     {key}: {value}" for key, value in zarr_array.attrs.items()])
+    updated_array_attributes_message += key_values
+    # updated_array_attributes_message += '\n'
+    print(updated_array_attributes_message)
+
+
+def print_final_store_state(store):
+    print("Store after visititems\n>>> ------------------------------------")
+    print("  [bold]Key[/bold] : [bold]Value[/bold]")
+    for key, value in store.items():
+        print(f"  {key}: {value}")
+    print("------------------------------------ <<<\n")
+
+
 class SingleHdf5ToZarr:
     """Translate the content of one HDF5 file into Zarr metadata.
 
@@ -149,8 +263,14 @@ class SingleHdf5ToZarr:
             An equivalent Zarr group or array to the HDF5 group or dataset with
             attributes.
         """
+        print(f"> [bold]Transferring attributes[/bold]")
+        print(f"   from HDF5 object : '{h5obj}'")
+        print(f"   to Zarr object : '{zobj}'")
+        print('   ' + '-' * 19 + '-' * len(str(zobj)))
         for n, v in h5obj.attrs.items():
+            print(f"   Processing attribute [bold]{n}[/bold] with value [bold]{v}[/bold] : ")
             if n in _HIDDEN_ATTRS:
+                print(f"   [dim][red]Skipping[/red] hidden attribute [bold]{n}[/bold][/dim]")
                 continue
 
             # Fix some attribute values to avoid JSON encoding exceptions...
@@ -160,6 +280,7 @@ class SingleHdf5ToZarr:
                 if v.dtype.kind == "S":
                     v = v.astype(str)
                 if n == "_FillValue":
+                    print("Skipping _FillValue attribute")
                     continue  # strip it out!
                 elif v.size == 1:
                     v = v.flatten()[0]
@@ -170,13 +291,17 @@ class SingleHdf5ToZarr:
             elif isinstance(v, h5py._hl.base.Empty):
                 v = ""
             if v == "DIMENSION_SCALE":
+                print("Skipping DIMENSION_SCALE attribute")
                 continue
             try:
+                print(f"   [bold]Setting[/bold] Zarr object attribute [code]{n}[/code] to [code]{v}[/code]")
                 zobj.attrs[n] = v
+                print_updated_attrs(zobj)
             except TypeError:
-                lggr.debug(
-                    f"TypeError transferring attr, skipping:\n {n}@{h5obj.name} = {v} ({type(v)})"
+                print(
+                    f"TypeError transferring attribute {n}@{h5obj.name} with value {v} ({type(v)}), skipping."
                 )
+        print('\n')
 
     def _decode_filters(self, h5obj: Union[h5py.Dataset, h5py.Group]):
         if h5obj.scaleoffset:
@@ -424,6 +549,7 @@ class SingleHdf5ToZarr:
                         )
 
                 # Create a Zarr array equivalent to this HDF5 dataset...
+                print_create_array_equivalent_to(h5obj.name)
                 za = self._zroot.create_dataset(
                     h5obj.name,
                     shape=h5obj.shape,
@@ -436,13 +562,23 @@ class SingleHdf5ToZarr:
                     **kwargs,
                 )
                 lggr.debug(f"Created Zarr array: {za}")
+                print_created_array(za)
+                print_initial_attrs(za)
 
                 adims = self._get_array_dims(h5obj)
+                print_get_array_dimensions(h5obj, adims)
+                print_add_array_dimensions_to(za)
                 za.attrs["_ARRAY_DIMENSIONS"] = adims
                 lggr.debug(f"_ARRAY_DIMENSIONS = {adims}")
+                print_updated_array(za)
 
+                # print_transfer_attributes_from_to(h5obj, za)
                 self._transfer_attrs(h5obj, za)
                 lggr.debug(f"Transferred attributes from {h5obj} to {za}")
+                print_source_attrs(h5obj)
+                # print_initial_attrs(za)
+                print_updated_attrs(za)
+                # print(za.zmetadata)
 
                 if "data" in kwargs:
                     return  # embedded bytes, no chunks to copy
