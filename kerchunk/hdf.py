@@ -565,13 +565,6 @@ class SingleHdf5ToZarr:
                 print_created_array(za)
                 print_initial_attrs(za)
 
-                adims = self._get_array_dims(h5obj)
-                print_get_array_dimensions(h5obj, adims)
-                print_add_array_dimensions_to(za)
-                za.attrs["_ARRAY_DIMENSIONS"] = adims
-                lggr.debug(f"_ARRAY_DIMENSIONS = {adims}")
-                print_updated_array(za)
-
                 # print_transfer_attributes_from_to(h5obj, za)
                 self._transfer_attrs(h5obj, za)
                 lggr.debug(f"Transferred attributes from {h5obj} to {za}")
@@ -579,6 +572,13 @@ class SingleHdf5ToZarr:
                 # print_initial_attrs(za)
                 print_updated_attrs(za)
                 # print(za.zmetadata)
+
+                adims = self._get_array_dims(h5obj)
+                print_get_array_dimensions(h5obj, adims)
+                print_add_array_dimensions_to(za)
+                za.attrs["_ARRAY_DIMENSIONS"] = adims
+                lggr.debug(f"_ARRAY_DIMENSIONS = {adims}")
+                print_updated_array(za)
 
                 if "data" in kwargs:
                     return  # embedded bytes, no chunks to copy
