@@ -1,25 +1,30 @@
 name: test_env
 channels:
   - conda-forge
-  - defaults
+  - nodefaults
 dependencies:
   - python=3.10
   - dask
   - zarr
-  - xarray
+  - xarray>=2024.10.0
   - h5netcdf
-  - h5py<3.9
+  - h5py
   - pandas
   - cfgrib
   - cftime
+  # Temporary workaround for #508
+  - eccodes <2.38
+
   - astropy
   - requests
   - aiohttp
   - pytest-cov
-  - fsspec
+  - pytest-subtests
+  - fsspec<=2024.12.0
   - dask
   - scipy
   - s3fs
+  - gcsfs
   - python-blosc
   - flake8
   - black
@@ -28,6 +33,6 @@ dependencies:
   - pyopenssl
   - tifffile
   - netCDF4
-  - pip:
-      - git+https://github.com/fsspec/filesystem_spec
-      - ipfsspec
+#  - pip:
+#      - git+https://github.com/fsspec/filesystem_spec
+#      - ipfsspec

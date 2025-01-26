@@ -20,11 +20,11 @@ classifiers = [
 
 
 dependencies = [
-  "fsspec",
-  "numcodecs<=0.11",
+  "fsspec<=2024.12.0",
+  "numcodecs",
   "numpy",
   "ujson",
-  "zarr",
+  "zarr<3",
 ]
 
 [project.optional-dependencies]
@@ -36,14 +36,20 @@ netcdf3 = ["scipy"]
 dev = [
     "cftime",
     "dask",
+    "fastparquet>=2024.11.0",
     "h5netcdf",
     "h5py",
     "jinja2",
     "mypy",
     "pytest",
     "s3fs",
+    "gcsfs",
     "types-ujson",
-    "xarray",
+    "xarray>=2024.10.0",
+    "cfgrib",
+    "scipy",
+    "netcdf4",
+    "pytest-subtests",
 ]
 
 [project.urls]
@@ -57,6 +63,7 @@ fill_hdf_strings = "kerchunk.codecs:FillStringsCodec"
 FITSAscii = "kerchunk.codecs:AsciiTableCodec"
 FITSVarBintable = "kerchunk.codecs:VarArrCodec"
 record_member = "kerchunk.codecs:RecordArrayMember"
+zlib = "kerchunk.codecs:ZlibCodec"
 
 [project.entry-points."xarray.backends"]
 kerchunk = "kerchunk.xarray_backend:KerchunkBackend"

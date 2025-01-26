@@ -1,12 +1,13 @@
 import base64
+import io
 import logging
+import pathlib
 from typing import Union, BinaryIO
 
 import fsspec.core
 from fsspec.implementations.reference import LazyReferenceMapper
 import numpy as np
 import zarr
-from zarr.meta import encode_fill_value
 import numcodecs
 
 from .codecs import FillStringsCodec
@@ -20,6 +21,12 @@ except ModuleNotFoundError:  # pragma: no cover
         "`pip/conda install h5py`. See https://docs.h5py.org/en/latest/build.html "
         "for more details."
     )
+
+try:
+    from zarr.meta import encode_fill_value
+except ModuleNotFoundError:
+    # https://github.com/zarr-developers/zarr-python/issues/2021
+    from zarr.v2.meta import encode_fill_value
 
 lggr = logging.getLogger("h5-to-zarr")
 _HIDDEN_ATTRS = {  # from h5netcdf.attrs
@@ -47,7 +54,7 @@ class SingleHdf5ToZarr:
         to BinaryIO is optional), in which case must also provide url. If a str,
         file will be opened using fsspec and storage_options.
     url : string
-        URI of the HDF5 file, if passing a file-like object
+        URI of the HDF5 file, if passing a file-like object or h5py File/Group
     spec : int
         The version of output to produce (see README of this repo)
     inline_threshold : int
@@ -73,7 +80,7 @@ class SingleHdf5ToZarr:
 
     def __init__(
         self,
-        h5f: "BinaryIO | str",
+        h5f: "BinaryIO | str | h5py.File | h5py.Group",
         url: str = None,
         spec=1,
         inline_threshold=500,
@@ -85,19 +92,26 @@ class SingleHdf5ToZarr:
 
         # Open HDF5 file in read mode...
         lggr.debug(f"HDF5 file: {h5f}")
-        if isinstance(h5f, str):
+        if isinstance(h5f, (pathlib.Path, str)):
             fs, path = fsspec.core.url_to_fs(h5f, **(storage_options or {}))
             self.input_file = fs.open(path, "rb")
             url = h5f
-        else:
+            self._h5f = h5py.File(self.input_file, mode="r")
+        elif isinstance(h5f, io.IOBase):
             self.input_file = h5f
+            self._h5f = h5py.File(self.input_file, mode="r")
+        elif isinstance(h5f, (h5py.File, h5py.Group)):
+            # assume h5py object (File or group/dataset)
+            self._h5f = h5f
+            fs, path = fsspec.core.url_to_fs(url, **(storage_options or {}))
+            self.input_file = fs.open(path, "rb")
+        else:
+            raise ValueError("type of input `h5f` not recognised")
         self.spec = spec
         self.inline = inline_threshold
         if vlen_encode not in ["embed", "null", "leave", "encode"]:
             raise NotImplementedError
         self.vlen = vlen_encode
-        self._h5f = h5py.File(self.input_file, mode="r")
-
         self.store = out or {}
         self._zroot = zarr.group(store=self.store, overwrite=True)
 
@@ -105,13 +119,20 @@ class SingleHdf5ToZarr:
         self.error = error
         lggr.debug(f"HDF5 file URI: {self._uri}")
 
-    def translate(self):
+    def translate(self, preserve_linked_dsets=False):
         """Translate content of one HDF5 file into Zarr storage format.
 
         This method is the main entry point to execute the workflow, and
         returns a "reference" structure to be used with zarr/kerchunk
 
         No data is copied out of the HDF5 file.
+
+        Parameters
+        ----------
+        preserve_linked_dsets : bool (optional, default False)
+            If True, translate HDF5 soft and hard links for each `h5py.Dataset`
+            into the reference structure. Requires h5py version 3.11.0 or later.
+            Will not translate external links or links to `h5py.Group` objects.
 
         Returns
         -------
@@ -120,7 +141,17 @@ class SingleHdf5ToZarr:
         """
         lggr.debug("Translation begins")
         self._transfer_attrs(self._h5f, self._zroot)
+
         self._h5f.visititems(self._translator)
+
+        if preserve_linked_dsets:
+            if not has_visititems_links():
+                raise RuntimeError(
+                    "'preserve_linked_dsets' kwarg requires h5py 3.11.0 or later "
+                    f"is installed, found {h5py.__version__}"
+                )
+            self._h5f.visititems_links(self._translator)
+
         if self.spec < 1:
             return self.store
         elif isinstance(self.store, LazyReferenceMapper):
@@ -239,10 +270,26 @@ class SingleHdf5ToZarr:
                 )
         return filters
 
-    def _translator(self, name: str, h5obj: Union[h5py.Dataset, h5py.Group]):
+    def _translator(
+        self,
+        name: str,
+        h5obj: Union[
+            h5py.Dataset, h5py.Group, h5py.SoftLink, h5py.HardLink, h5py.ExternalLink
+        ],
+    ):
         """Produce Zarr metadata for all groups and datasets in the HDF5 file."""
         try:  # method must not raise exception
             kwargs = {}
+
+            if isinstance(h5obj, (h5py.SoftLink, h5py.HardLink)):
+                h5obj = self._h5f[name]
+                if isinstance(h5obj, h5py.Group):
+                    # continues iteration of visititems_links
+                    lggr.debug(
+                        f"Skipping translation of HDF5 linked group: '{h5obj.name}'"
+                    )
+                    return None
+
             if isinstance(h5obj, h5py.Dataset):
                 lggr.debug(f"HDF5 dataset: {h5obj.name}")
                 lggr.debug(f"HDF5 compression: {h5obj.compression}")
@@ -424,7 +471,7 @@ class SingleHdf5ToZarr:
                         )
 
                 # Create a Zarr array equivalent to this HDF5 dataset...
-                za = self._zroot.create_dataset(
+                za = self._zroot.require_dataset(
                     h5obj.name,
                     shape=h5obj.shape,
                     dtype=dt or h5obj.dtype,
@@ -453,7 +500,11 @@ class SingleHdf5ToZarr:
                         if h5obj.fletcher32:
                             logging.info("Discarding fletcher32 checksum")
                             v["size"] -= 4
-                        if self.inline and isinstance(v, list) and v[2] < self.inline:
+                        if (
+                            self.inline
+                            and isinstance(v, dict)
+                            and v["size"] < self.inline
+                        ):
                             self.input_file.seek(v["offset"])
                             data = self.input_file.read(v["size"])
                             try:
@@ -461,7 +512,7 @@ class SingleHdf5ToZarr:
                                 data.decode("ascii")
                             except UnicodeDecodeError:
                                 data = b"base64:" + base64.b64encode(data)
-                            self.store[k] = data
+                            self.store[za._chunk_key(k)] = data
                         else:
                             self.store[za._chunk_key(k)] = [
                                 self._uri,
@@ -471,7 +522,7 @@ class SingleHdf5ToZarr:
 
             elif isinstance(h5obj, h5py.Group):
                 lggr.debug(f"HDF5 group: {h5obj.name}")
-                zgrp = self._zroot.create_group(h5obj.name)
+                zgrp = self._zroot.require_group(h5obj.name)
                 self._transfer_attrs(h5obj, zgrp)
         except Exception as e:
             import traceback
@@ -630,3 +681,7 @@ def _is_netcdf_datetime(dataset: h5py.Dataset):
 
 def _is_netcdf_variable(dataset: h5py.Dataset):
     return any("_Netcdf4" in _ for _ in dataset.attrs)
+
+
+def has_visititems_links():
+    return hasattr(h5py.Group, "visititems_links")

@@ -91,11 +91,17 @@ First we'll create and activate the build environment:
 
 Now that you have the correct dependencies installed in your environment,
 you should be able to install your development version of kerchunk locally.
-In the projects home directory run:
+In the project's home directory run:
 
 .. code-block:: sh
 
     pip install -e .
+
+To install with optional development dependencies run:
+
+.. code-block:: sh
+
+    pip install -e '.[dev]'
 
 To test that the installation was successful run:
 
@@ -151,7 +157,7 @@ The above can be simplified to
 
     git checkout -b shiny-new-feature
 
-This changes your working directory to the shiny-new-feature branch.  Keep any
+This changes your working directory to the ``shiny-new-feature`` branch.  Keep any
 changes in this branch specific to one bug or feature so it is clear
 what the branch brings to *kerchunk*. You can have many "shiny-new-features"
 and switch in between them using the ``git checkout`` command.
@@ -187,7 +193,7 @@ Contributing documentation
 
 Documentation improvements are appreciated. The documentation is contained within the ``docs`` directory of the project.
 It is written in ``ReStructured Text (.rst)``, which is similar to markdown, but features more functionality.
-These ReStructured text files are built into ``html`` using the python `sphinx (https://www.sphinx-doc.org/en/master/)_` package.
+These ReStructured text files are built into ``html`` using the python `sphinx <https://www.sphinx-doc.org/en/master/>`_ package.
 
 You can create a virtual environment by running:
 
